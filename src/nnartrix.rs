@@ -10,7 +10,7 @@ use walkdir::WalkDir;
 
 const IN: usize = 9 * 3;
 const OUT: usize = 4 * 3;
-type Network = (Linear<IN, OUT>);
+type Network = (Linear<IN, 30>, Sigmoid, Linear<30, OUT>, Sigmoid);
 
 pub struct NNArtrix {
     network: Network, // 1 color = 3 channels
@@ -35,6 +35,8 @@ impl NNArtrix {
         let mut network = Network::default();
         if let Err(e) = network.load(path) {
             panic!("Npz Error");
+        } else {
+            info!("Network loaded successfully.");
         }
 
         Self {
@@ -143,14 +145,14 @@ impl NNArtrix {
                             for (i, (x_offset, y_offset)) in [(0, 0), (0, 1), (1, 0), (1, 1)].into_iter().enumerate() {
                                 let current_x = x as i32 * 2 + x_offset;
                                 let current_y = y as i32 * 2 + y_offset;
-                                let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.0, 0.0, 0.0])); //FIXME: images with odd size result in darker corner pixels
+                                let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([1.0, 1.0, 1.0])); //FIXME: images with odd size result in darker corner pixels
                                 truth[i * 3..(1 + i) * 3].copy_from_slice(&pixel.0);
                                 trace!("Pixel {}, {}", current_x, current_y);
                             }
                             for (i, (x_offset, y_offset)) in [(0,0), (0, -1), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1)].into_iter().enumerate() {
                                 let current_x = x as i32 + x_offset;
                                 let current_y = y as i32 + y_offset;
-                                let pixel = is_in_bounds((current_x, current_y), &downscaled_image).then(|| downscaled_image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.0, 0.0, 0.0]));
+                                let pixel = is_in_bounds((current_x, current_y), &downscaled_image).then(|| downscaled_image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([1.0, 1.0, 1.0]));
                                 input[i * 3..(1 + i) * 3].copy_from_slice(&pixel.0);
                                 trace!("Downscaled Pixel {}, {}", current_x, current_y);
                                 //let mut avg_color = Rgb([0.0; 3]);
@@ -215,7 +217,7 @@ mod test {
 
     #[test]
     fn upscale_examples() {
-        let mut nnartrix = NNArtrix::open("models/bern/[0-35]");
+        let mut nnartrix = NNArtrix::open("models/bern/[0-2285].npz");
         for file in fs::read_dir("example_images").unwrap() {
             let path = file.unwrap().path();
             if !path.file_stem().unwrap().to_string_lossy().trim_end_matches(|c| char::is_digit(c, 10)).ends_with("ups") {

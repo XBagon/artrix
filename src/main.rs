@@ -33,7 +33,7 @@ struct Args {
 fn main() {
     pretty_env_logger::init();
 
-    let mut nnartrix = NNArtrix::open("models/bern/[0-30]");
+    let mut nnartrix = NNArtrix::open("models/bern/[0-0].npz");
     let args: Args = Args::parse();
     if let Some(mut apply) = args.apply {
         apply_to_file(&mut nnartrix, args.times, apply);
