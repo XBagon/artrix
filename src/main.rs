@@ -7,7 +7,7 @@ use fixed::{
 use crate::artrix::{Artrix, inverse_smoothstep};
 use clap::Parser;
 use image::DynamicImage;
-use crate::nnartrix::NNArtrix;
+use crate::nnartrix::{apply_to_file, NNArtrix};
 
 mod tensor;
 mod artrix;
@@ -36,17 +36,8 @@ fn main() {
     let mut nnartrix = NNArtrix::open("models/bern/[0-30]");
     let args: Args = Args::parse();
     if let Some(mut apply) = args.apply {
-        let mut image = image::open(&apply).unwrap().into_rgb32f();
-        for _ in 0..args.times {
-            image = nnartrix.apply(&image);
-        }
-        let file_name = format!("{}_ups{}.{}", apply.file_stem().unwrap().to_string_lossy(), if args.times == 1 { String::from("") } else { args.times.to_string() }, apply.extension().unwrap().to_string_lossy());
-        apply.pop();
-        apply.push(file_name);
-        let image = DynamicImage::ImageRgb32F(image).into_rgb8();
-        image.save(&apply).unwrap();
+        apply_to_file(&mut nnartrix, args.times, apply);
     } else {
         nnartrix.train_on_image_folder(args.skip);
     }
 }
-
