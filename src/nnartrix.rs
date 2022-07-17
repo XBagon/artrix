@@ -4,7 +4,7 @@ use std::path::Path;
 use dfdx::prelude::*;
 use image::{GenericImageView, ImageFormat, Pixel, Rgb, Rgb32FImage};
 use image::io::Reader;
-use log::{info, trace, warn};
+use log::{debug, info, trace, warn};
 use walkdir::WalkDir;
 
 const IN: usize = 9 * 3;
@@ -65,7 +65,7 @@ impl NNArtrix {
         let mut output_image = Rgb32FImage::new(image.width() * 4, image.height() * 4);
         for (x, y, mut pixel) in image.enumerate_pixels() {
             let mut input = [0f32; IN];
-            for (i, (x_offset, y_offset)) in  [(0, -1), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1)].into_iter().enumerate() {
+            for (i, (x_offset, y_offset)) in  [(0,0), (0, -1), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1)].into_iter().enumerate() {
                 let current_x = x as i32 + x_offset;
                 let current_y = y as i32 + y_offset;
                 let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.0, 0.0, 0.0]));
@@ -114,6 +114,7 @@ impl NNArtrix {
 
     pub fn train_on_image_folder(&mut self, mut skip_n_images: usize) {
         let mut file_counter = 0;
+        let mut percentage = 0;
         for entry in WalkDir::new("X:/Media/Pictures") {
             let entry = entry.unwrap();
             if entry.file_type().is_file() {
@@ -145,7 +146,7 @@ impl NNArtrix {
                                 truth[i * 3..(1 + i) * 3].copy_from_slice(&pixel.0);
                                 trace!("Pixel {}, {}", current_x, current_y);
                             }
-                            for (i, (x_neighbor_offset, y_neighbor_offset)) in [(0, -2), (-2, -2), (-2, 0), (-2, 2), (0, 2), (2, 2), (2, 0), (2, -2)].into_iter().enumerate() {
+                            for (i, (x_neighbor_offset, y_neighbor_offset)) in [(0,0), (0, -2), (-2, -2), (-2, 0), (-2, 2), (0, 2), (2, 2), (2, 0), (2, -2)].into_iter().enumerate() {
                                 let mut avg_color = Rgb([0.0; 3]);
                                 for (mut x_offset, mut y_offset) in [(0, 0), (0, 1), (1, 0), (1, 1)].into_iter() {
                                     x_offset += x_neighbor_offset;
@@ -159,7 +160,14 @@ impl NNArtrix {
                                 avg_color.apply(|ch| ch / 4.); //average different than blend?
                                 input[i * 3..(1 + i) * 3].copy_from_slice(&avg_color.0);
                             }
-                            self.train(&(Tensor1D::new(input), Tensor1D::new(truth)))
+                            let data = (Tensor1D::new(input), Tensor1D::new(truth));
+                            debug!("Input: {:?}\nOutput:{:?}", data.0, data.1);
+                            self.train(&data)
+                        }
+                        let new_percentage = (y as f32 / image.height() as f32 * 100.) as u32;
+                        if percentage != new_percentage {
+                            percentage = new_percentage;
+                            info!("Current image's process: {}%", new_percentage)
                         }
                     }
                     info!(r#"Finished file #{} "{}" sucessfully."#, file_counter, entry.file_name().to_string_lossy());
