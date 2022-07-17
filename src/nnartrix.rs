@@ -62,13 +62,13 @@ impl NNArtrix {
     }
 
     pub fn apply(&self, mut image: &Rgb32FImage) -> Rgb32FImage {
-        let mut output_image = Rgb32FImage::new(image.width() * 4, image.height() * 4);
+        let mut output_image = Rgb32FImage::new(image.width() * 2, image.height() * 2);
         for (x, y, mut pixel) in image.enumerate_pixels() {
             let mut input = [0f32; IN];
             for (i, (x_offset, y_offset)) in  [(0,0), (0, -1), (-1, -1), (-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1)].into_iter().enumerate() {
                 let current_x = x as i32 + x_offset;
                 let current_y = y as i32 + y_offset;
-                let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.0, 0.0, 0.0]));
+                let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.5, 0.5, 0.5]));
                 input[i * 3..(1 + i) * 3].copy_from_slice(&pixel.0);
                 trace!("Pixel {}, {}", current_x, current_y);
             }
@@ -76,9 +76,8 @@ impl NNArtrix {
             for (i, (x_offset, y_offset)) in [(0, 0), (0, 1), (1, 0), (1, 1)].into_iter().enumerate() {
                 let current_x = x as i32 * 2 + x_offset;
                 let current_y = y as i32 * 2 + y_offset;
-                if is_in_bounds((current_x, current_y), &image) {
-                    output_image.put_pixel(current_x as u32, current_y as u32, Rgb(output.data()[i * 3..(1 + i) * 3].try_into().unwrap()));
-                }
+                trace!("Putting Pixel {}, {}", current_x, current_y);
+                output_image.put_pixel(current_x as u32, current_y as u32, Rgb(output.data()[i * 3..(1 + i) * 3].try_into().unwrap()));
             }
         }
         output_image
@@ -142,7 +141,7 @@ impl NNArtrix {
                             for (i, (x_offset, y_offset)) in [(0, 0), (0, 1), (1, 0), (1, 1)].into_iter().enumerate() {
                                 let current_x = x as i32 + x_offset;
                                 let current_y = y as i32 + y_offset;
-                                let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.0, 0.0, 0.0])); //FIXME: images with odd size result in darker corner pixels
+                                let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.5, 0.5, 0.5])); //FIXME: images with odd size result in darker corner pixels
                                 truth[i * 3..(1 + i) * 3].copy_from_slice(&pixel.0);
                                 trace!("Pixel {}, {}", current_x, current_y);
                             }
@@ -153,7 +152,7 @@ impl NNArtrix {
                                     y_offset += y_neighbor_offset;
                                     let current_x = x as i32 + x_offset;
                                     let current_y = y as i32 + y_offset;
-                                    let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.0, 0.0, 0.0]));
+                                    let pixel = is_in_bounds((current_x, current_y), &image).then(|| image.get_pixel(current_x as u32, current_y as u32)).unwrap_or(&Rgb([0.5, 0.5, 0.5]));
                                     add_assign_colors(&mut avg_color, pixel);
                                     trace!("Pixel {}, {}", current_x, current_y);
                                 }
